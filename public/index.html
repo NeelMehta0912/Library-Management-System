@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Library Management System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+    <h1>📚 Library Management System</h1>
+    <nav>
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="books.html">Books</a>
+        <a href="members.html">Members</a>
+        <a href="issue.html">Issue / Return</a>
+        <a href="reports.html">SQL Reports</a>
+    </nav>
+</header>
+<main>
+    <h2>Dashboard</h2>
+    <div id="cards" class="cards"><p class="loading">Loading stats…</p></div>
+
+    <div class="info-box">
+        <h3>How this project maps to the syllabus</h3>
+        <ul>
+            <li><b>Triggers</b> — issuing a book fires <code>trg_before_issue</code> and
+                <code>trg_after_issue</code>; returning a book fires <code>trg_before_return</code>
+                and <code>trg_after_return</code> (auto-calculates a late fine and restocks the
+                copy). All defined in <code>mysql/schema.sql</code>.</li>
+            <li><b>Views</b> — the Books and Members pages read from
+                <code>available_books_view</code> and <code>member_activity_view</code>.</li>
+            <li><b>Nested Subqueries &amp; CTEs</b> — see the <a href="reports.html">SQL Reports</a>
+                page: every result there is produced by a MySQL stored procedure containing a real
+                subquery or CTE, called live from the backend API.</li>
+        </ul>
+    </div>
+</main>
+<footer><p>DBMS Mini Project — Case-based learning: Nested Subqueries · CTEs · Views · Triggers</p></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

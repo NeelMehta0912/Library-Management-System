@@ -1,0 +1,17 @@
+# Caddyfile — tells Railway how to serve this as a static site.
+# Railway's build system (Nixpacks) auto-detects a Caddyfile and runs
+# Caddy to serve the files, no Dockerfile needed.
+#
+# This file lives INSIDE public/, and this service's Root Directory
+# (set in Railway) is also "public" — so "." here means "this folder".
+
+{
+    admin off
+    auto_https off
+}
+
+:{$PORT} {
+    root * .
+    encode gzip
+    file_server
+}

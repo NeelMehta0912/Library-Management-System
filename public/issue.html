@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Issue / Return — Library Management System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+    <h1>📚 Library Management System</h1>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="books.html">Books</a>
+        <a href="members.html">Members</a>
+        <a href="issue.html" class="active">Issue / Return</a>
+        <a href="reports.html">SQL Reports</a>
+    </nav>
+</header>
+<main>
+    <h2>Issue a Book</h2>
+    <p class="hint">Submitting this calls the <code>issue_book()</code> MySQL stored procedure, which
+        fires <code>trg_before_issue</code> (blocks it if no copies are left) then
+        <code>trg_after_issue</code> (auto-decrements <code>available_copies</code>).</p>
+
+    <div id="flash" class="flash"></div>
+
+    <form id="issue-form">
+        <select id="book_id" required></select>
+        <select id="member_id" required></select>
+        <button type="submit">Issue Book</button>
+    </form>
+
+    <h2>Currently Issued Books</h2>
+    <p class="hint">Returning a book calls <code>return_book()</code>, which fires
+        <code>trg_after_return</code> — restoring the copy and auto-calculating a ₹5/day fine if late.</p>
+    <div id="active-issues"><p class="loading">Loading…</p></div>
+</main>
+<footer><p>DBMS Mini Project — Case-based learning: Nested Subqueries · CTEs · Views · Triggers</p></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/issue.js"></script>
+</body>
+</html>

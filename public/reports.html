@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Reports — Library Management System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+    <h1>📚 Library Management System</h1>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="books.html">Books</a>
+        <a href="members.html">Members</a>
+        <a href="issue.html">Issue / Return</a>
+        <a href="reports.html" class="active">SQL Reports</a>
+    </nav>
+</header>
+<main>
+    <h2>SQL Reports</h2>
+    <p class="hint">Each section below calls a MySQL stored procedure (via the backend API)
+        that contains a real nested subquery, CTE, or view. The SQL shown is the exact procedure body
+        from <code>mysql/schema.sql</code>.</p>
+
+    <section class="report">
+    <h3>1. Nested Subquery — Members who borrowed more than the average</h3>
+    <pre><code>SELECT m.name, COUNT(ir.issue_id) AS books_issued
+FROM members m
+JOIN issue_records ir ON m.member_id = ir.member_id
+GROUP BY m.member_id, m.name
+HAVING COUNT(ir.issue_id) > (
+    SELECT AVG(cnt) FROM (
+        SELECT COUNT(*) AS cnt FROM issue_records GROUP BY member_id
+    ) AS member_counts
+);</code></pre>
+    <p class="explain">The innermost query counts issues per member; the middle subquery averages
+        those counts; HAVING then keeps only members whose personal count beats that average.</p>
+    <div id="members-above-avg"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>2. Nested Subquery — Books that have never been issued</h3>
+    <pre><code>SELECT title FROM books
+WHERE book_id NOT IN (SELECT DISTINCT book_id FROM issue_records);</code></pre>
+    <p class="explain">The subquery lists every book_id that appears at least once in issue_records;
+        NOT IN filters the outer books list down to titles absent from that set.</p>
+    <div id="never-issued"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>3. Correlated Subquery — Most expensive book in each category</h3>
+    <pre><code>SELECT b.title, c.category_name, b.price
+FROM books b JOIN categories c ON b.category_id = c.category_id
+WHERE b.price = (
+    SELECT MAX(b2.price) FROM books b2 WHERE b2.category_id = b.category_id
+);</code></pre>
+    <p class="explain">The inner query re-references the outer table's category_id on every row
+        (a correlated subquery) to find that category's maximum price.</p>
+    <div id="most-expensive"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>4. CTE + Window Function — Book popularity ranking</h3>
+    <pre><code>WITH book_popularity AS (
+    SELECT b.title, COUNT(ir.issue_id) AS times_borrowed
+    FROM books b LEFT JOIN issue_records ir ON b.book_id = ir.book_id
+    GROUP BY b.book_id, b.title
+)
+SELECT title, times_borrowed,
+       RANK() OVER (ORDER BY times_borrowed DESC) AS popularity_rank
+FROM book_popularity;</code></pre>
+    <p class="explain">The CTE pre-computes borrow-counts once; the outer query reuses that named
+        result set to rank books — avoiding a nested nested subquery.</p>
+    <div id="popularity"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>5. Two Chained CTEs — Members who have paid a fine</h3>
+    <pre><code>WITH member_fines AS (
+    SELECT member_id, SUM(fine_amount) AS total_fine
+    FROM issue_records GROUP BY member_id
+),
+paying AS (
+    SELECT * FROM member_fines WHERE total_fine > 0
+)
+SELECT m.name, p.total_fine
+FROM paying p JOIN members m ON p.member_id = m.member_id
+ORDER BY p.total_fine DESC;</code></pre>
+    <p class="explain">The second CTE (paying) is built directly on top of the first
+        (member_fines) — CTEs can chain, each one readable top to bottom instead of nesting inward.</p>
+    <div id="paying-members"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>6. Recursive CTE — Full category hierarchy</h3>
+    <pre><code>WITH RECURSIVE tree AS (
+    SELECT category_id, category_name, parent_id, 0 AS level, category_name AS path
+    FROM categories WHERE parent_id IS NULL
+    UNION ALL
+    SELECT c.category_id, c.category_name, c.parent_id, t.level + 1,
+           CONCAT(t.path, ' > ', c.category_name)
+    FROM categories c JOIN tree t ON c.parent_id = t.category_id
+)
+SELECT level, path FROM tree ORDER BY path;</code></pre>
+    <p class="explain">The anchor member selects top-level categories; the recursive member joins
+        categories back onto tree to pull in children, building the path until no children remain
+        (MySQL uses CONCAT() here instead of Postgres's || operator).</p>
+    <div id="category-tree"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>7. Simple CTE — Month-wise issue counts</h3>
+    <pre><code>WITH monthly AS (
+    SELECT DATE_FORMAT(issue_date, '%Y-%m') AS issue_month, COUNT(*) AS total_issued
+    FROM issue_records GROUP BY DATE_FORMAT(issue_date, '%Y-%m')
+)
+SELECT * FROM monthly ORDER BY issue_month;</code></pre>
+    <div id="monthly-issues"><p class="loading">Running query…</p></div>
+    </section>
+
+    <section class="report">
+    <h3>8. View — Currently overdue books</h3>
+    <pre><code>CREATE VIEW overdue_books_view AS
+SELECT ir.issue_id, m.name AS member_name, b.title, ir.issue_date, ir.due_date,
+       DATEDIFF(CURRENT_DATE, ir.due_date) AS days_overdue
+FROM issue_records ir
+JOIN members m ON ir.member_id = m.member_id
+JOIN books b ON ir.book_id = b.book_id
+WHERE ir.return_date IS NULL AND ir.due_date < CURRENT_DATE;</code></pre>
+    <p class="explain">A VIEW packages this multi-table JOIN + filter as a virtual table, so the
+        app queries <code>SELECT * FROM overdue_books_view</code> instead of repeating the JOIN logic.</p>
+    <div id="overdue"><p class="loading">Running query…</p></div>
+    </section>
+</main>
+<footer><p>DBMS Mini Project — Case-based learning: Nested Subqueries · CTEs · Views · Triggers</p></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/reports.js"></script>
+</body>
+</html>
