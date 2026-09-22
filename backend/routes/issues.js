@@ -24,10 +24,10 @@ router.get("/active", async (req, res, next) => {
 // trg_before_issue / trg_after_issue actually fire on.
 router.post("/", async (req, res, next) => {
   try {
-    const { book_id, member_id, days = 14 } = req.body;
-    const [result] = await pool.query("CALL issue_book(?, ?, ?)", [book_id, member_id, days]);
-    // result[0] is the SELECT's result set, result[0][0] is the one row.
-    res.status(201).json(result[0][0]);
+       const { book_id, member_id, days = 14 } = req.body;
+    const [resultSets] = await pool.query("CALL issue_book(?, ?, ?)", [book_id, member_id, days]);
+    const row = Array.isArray(resultSets[0]) ? resultSets[0][0] : resultSets[0];
+    res.status(201).json(row);
   } catch (err) {
     next(err);
   }
@@ -37,8 +37,26 @@ router.post("/", async (req, res, next) => {
 // trg_after_return fire on (fine calculation + copy restock).
 router.post("/:id/return", async (req, res, next) => {
   try {
-    const [result] = await pool.query("CALL return_book(?)", [req.params.id]);
-    res.json(result[0][0]);
+        const [resultSets] = await pool.query("CALL return_book(?)", [req.params.id]);
+    // mysql2 returns CALL as [OkPacket_from_UPDATE, rows_from_SELECT].
+    // Find the result-set that contains our actual row (has fine_amount).
+    let row = null;
+    for (const rs of resultSets) {
+      if (Array.isArray(rs) && rs.length > 0 && rs[0].fine_amount !== undefined) {
+        row = rs[0];
+        break;
+      }
+    }
+    if (!row) {
+      // Fallback: query directly in case the procedure returned nothing.
+      const [rows] = await pool.query(
+        "SELECT issue_id, book_id, member_id, issue_date, due_date, return_date, fine_amount FROM issue_records WHERE issue_id = ?",
+        [req.params.id]
+      );
+      row = rows[0] || {};
+    }
+    row.fine_amount = Number(row.fine_amount) || 0;
+    res.json(row);
   } catch (err) {
     next(err);
   }
