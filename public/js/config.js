@@ -9,4 +9,4 @@
 //   const API_BASE_URL = "https://library-api-production.up.railway.app/api";
 //
 // While testing locally with `npm run dev` in backend/, leave it as:
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = "https://library-management-system-production-3cf3.up.railway.app/api";
