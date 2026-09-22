@@ -37,26 +37,13 @@ router.post("/", async (req, res, next) => {
 // trg_after_return fire on (fine calculation + copy restock).
 router.post("/:id/return", async (req, res, next) => {
   try {
-        const [resultSets] = await pool.query("CALL return_book(?)", [req.params.id]);
-    // mysql2 returns CALL as [OkPacket_from_UPDATE, rows_from_SELECT].
-    // Find the result-set that contains our actual row (has fine_amount).
-    let row = null;
-    for (const rs of resultSets) {
-      if (Array.isArray(rs) && rs.length > 0 && rs[0].fine_amount !== undefined) {
-        row = rs[0];
-        break;
-      }
-    }
-    if (!row) {
-      // Fallback: query directly in case the procedure returned nothing.
-      const [rows] = await pool.query(
-        "SELECT issue_id, book_id, member_id, issue_date, due_date, return_date, fine_amount FROM issue_records WHERE issue_id = ?",
-        [req.params.id]
-      );
-      row = rows[0] || {};
-    }
-    row.fine_amount = Number(row.fine_amount) || 0;
-    res.json(row);
+               await pool.query("CALL return_book(?)", [req.params.id]);
+        const [[row]] = await pool.query(
+          "SELECT issue_id, book_id, member_id, issue_date, due_date, return_date, fine_amount FROM issue_records WHERE issue_id = ?",
+          [req.params.id]
+        );
+        row.fine_amount = Number(row.fine_amount) || 0;
+        res.json(row);
   } catch (err) {
     next(err);
   }
