@@ -1,4 +1,8 @@
 // issue.js
+function fmtDate(raw) {
+    if (!raw) return "—";
+    return String(raw).slice(0, 10);   // trims "2026-09-20T00:00:00.000Z" → "2026-09-20"
+}
 function flash(msg, type = "success") {
     const el = document.getElementById("flash");
     el.textContent = msg;
@@ -23,8 +27,8 @@ async function renderActiveIssues() {
             <tr>
                 <td>${i.book_title}</td>
                 <td>${i.member_name}</td>
-                <td>${i.issue_date}</td>
-                <td>${i.due_date}</td>
+                <td>${fmtDate(i.issue_date)}</td>
+                                <td>${fmtDate(i.due_date)}</td>
                 <td><button data-issue-id="${i.issue_id}" class="return-btn">Mark Returned</button></td>
             </tr>`).join("");
         el.innerHTML = `
