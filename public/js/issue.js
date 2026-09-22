@@ -41,8 +41,9 @@ async function renderActiveIssues() {
                 btn.disabled = true;
                 try {
                     const result = await Api.returnBook(btn.dataset.issueId);
-                    if (result.fine_amount > 0) {
-                        flash(`Book returned. Trigger auto-calculated a fine of ₹${result.fine_amount} (late return).`, "warning");
+                                       const fine = Number(result.fine_amount) || 0;
+                    if (fine > 0) {
+                        flash(`Book returned. Trigger auto-calculated a fine of ₹${fine} (late return).`, "warning");
                     } else {
                         flash("Book returned on time. No fine.", "success");
                     }
